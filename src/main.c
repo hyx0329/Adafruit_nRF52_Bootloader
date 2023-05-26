@@ -258,11 +258,14 @@ static void check_dfu_mode(void)
   if (dfu_skip) return;
 
   /*------------- Determine DFU mode (Serial, OTA, FRESET or normal) -------------*/
+  bool pressed_dfu = button_pressed(BUTTON_DFU);
+  bool pressed_freset = button_pressed(BUTTON_FRESET);
+
   // DFU button pressed
-  dfu_start = dfu_start || button_pressed(BUTTON_DFU);
+  dfu_start = dfu_start || pressed_dfu;
 
   // DFU + FRESET are pressed --> OTA
-  _ota_dfu = _ota_dfu  || ( button_pressed(BUTTON_DFU) && button_pressed(BUTTON_FRESET) ) ;
+  _ota_dfu = _ota_dfu  || ( pressed_dfu && pressed_freset ) ;
 
   bool const valid_app = bootloader_app_is_valid();
   bool const just_start_app = valid_app && !dfu_start && (*dbl_reset_mem) == DFU_DBL_RESET_APP;
@@ -290,6 +293,13 @@ static void check_dfu_mode(void)
       NRFX_DELAY_MS(DFU_DBL_RESET_DELAY);
     }
 #endif
+  }
+
+  
+  // enable OTA if button 2 pressed and double reset
+  if (!just_start_app)
+  {
+    _ota_dfu = _ota_dfu || pressed_freset;
   }
 
   if (APP_ASKS_FOR_SINGLE_TAP_RESET())
