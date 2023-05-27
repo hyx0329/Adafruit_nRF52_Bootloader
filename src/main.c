@@ -258,8 +258,8 @@ static void check_dfu_mode(void)
   if (dfu_skip) return;
 
   /*------------- Determine DFU mode (Serial, OTA, FRESET or normal) -------------*/
-  bool pressed_dfu = button_pressed(BUTTON_DFU);
-  bool pressed_freset = button_pressed(BUTTON_FRESET);
+  bool const pressed_dfu = button_pressed(BUTTON_DFU);
+  bool const pressed_freset = button_pressed(BUTTON_FRESET);
 
   // DFU button pressed
   dfu_start = dfu_start || pressed_dfu;
@@ -269,6 +269,9 @@ static void check_dfu_mode(void)
 
   bool const valid_app = bootloader_app_is_valid();
   bool const just_start_app = valid_app && !dfu_start && (*dbl_reset_mem) == DFU_DBL_RESET_APP;
+
+  // Single reset or cold boot
+  bool const single_tap_reset = valid_app && (*dbl_reset_mem) != DFU_DBL_RESET_MAGIC;
 
   if (!just_start_app && APP_ASKS_FOR_SINGLE_TAP_RESET()) dfu_start = 1;
 
@@ -294,7 +297,6 @@ static void check_dfu_mode(void)
     }
 #endif
   }
-
   
   // enable OTA if button 2 pressed and double reset
   if (!just_start_app)
@@ -330,7 +332,7 @@ static void check_dfu_mode(void)
     }
 
     // Initiate an update of the firmware.
-    if (APP_ASKS_FOR_SINGLE_TAP_RESET() || uf2_dfu || serial_only_dfu)
+    if (APP_ASKS_FOR_SINGLE_TAP_RESET() || uf2_dfu || serial_only_dfu || single_tap_reset)
     {
       // If USB is not enumerated in 3s (eg. because we're running on battery), we restart into app.
        bootloader_dfu_start(_ota_dfu, 3000, true);
