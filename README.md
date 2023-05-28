@@ -35,14 +35,30 @@ In addition, there is also lots of other 3rd-party boards which are added by oth
 
 ## How to use
 
-There are two pins, `DFU` and `FRST` that bootloader will check upon reset/power:
+There are three pins, `RESET`(hard reset), `DFU`(button 1) and `FRST`(button 2) that will affect bootloader's behavior:
 
-- `Double Reset` Reset twice within 500 ms will enter DFU with UF2 and CDC support (only works with nRF52840)
-- `DFU = LOW` and `FRST = HIGH`: Enter bootloader with UF2 and CDC support
-- `DFU = LOW` and `FRST = LOW`: Enter bootloader with OTA, to upgrade with a mobile application such as Nordic nrfConnect/Toolbox
-- <s>`DFU = HIGH` and `FRST = LOW`: Factory Reset mode: erase firmware application and its data</s>
-- `DFU = HIGH` and `FRST = HIGH`: Go to application code if it is present, otherwise enter DFU with UF2
-- The `GPREGRET` register can also be set to force the bootloader can enter any of above modes (plus a CDC-only mode for Arduino).
+`RESET` | `DFU` | `FRST` | action
+:-: | :-: | :-: | :-
+Single | X    | X    | run application if available, other wise enter dfu(UF2 & CDC)
+Single | Hold | X    | enter dfu(UF2 & CDC)
+Single | Hold | Hold | enter dfu(OTA)
+Double | X    | X    | enter dfu(UF2 & CDC, nRF52840 exclusive)
+Double | X    | Hold | enter dfu(OTA, nRF52840 exclusive)
+
+button actions:
+
+- X: no action
+- Double: double tap
+- Single: single tap
+- Hold: hold the button
+- N/A: doesn't matter
+
+bootloader modes:
+
+- UF2 & CDC: can be upgraded through USB MSD or USB CDC serial
+- OTA: can be upgraded with a mobile application such as Nordic nrfConnect/Toolbox/DFU
+
+The `GPREGRET` register can also be set to force the bootloader can enter any of above modes (plus a CDC-only mode for Arduino).
 `GPREGRET` is set by the application before performing a soft reset.
 
 ```c
@@ -62,6 +78,8 @@ On the Nordic PCA10059 Dongle board, `DFU` is connected to the white button.
 There is an adjacent ground pad.
 
 For other boards, please check the board definition for details.
+
+The bootloader will wait only 3 seconds for USB enumeration in UF2 & CDC mode, unless it's enabled by double-reset. After that, it'll try to boot the application if available.
 
 ### Making your own UF2
 
@@ -90,6 +108,23 @@ To create a UF2 image for bootloader from a .hex file using separated family of 
 ```
 uf2conv.py bootloader.hex -c -f 0xd663823c
 ```
+
+## Making your own OTA zip
+
+To create an OTA zip package, you need to install `adafruit-nrfutil`. And to generate the package, here are the command line examples:
+
+```bash
+# for nRF52840
+adafruit-nrfutil dfu genpkg --dev-type 0x0052 --dev-revision 52840 --application application.hex --bootloader bootloader.hex --softdevice sd.hex package.zip
+
+# for nRF52833
+adafruit-nrfutil dfu genpkg --dev-type 0x0052 --dev-revision 52833 --application application.hex --bootloader bootloader.hex --softdevice sd.hex package.zip
+
+# for nRF52832
+adafruit-nrfutil dfu genpkg --dev-type 0x0052 --dev-revision 0xADAF --application application.hex --bootloader bootloader.hex --softdevice sd.hex package.zip
+```
+
+Note that any of `--application`, `--bootloader`, `--softdevice` can be ommitted if not required. But if you only specified the bootloader, you'll need to reflash the application and the softdevice.
 
 ## Burn & Upgrade with pre-built binaries
 
